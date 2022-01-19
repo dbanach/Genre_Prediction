@@ -14,10 +14,6 @@ class DB_Manager():
 
         self.connection = connection
 
-    def aux(self):
-        pass
-
-
     def check_if_db_exists(self):
         '''
         function that returns True if Movies database is already created, False if not
@@ -35,13 +31,12 @@ class DB_Manager():
         else:
             return False
 
-
     def sql_command(self,sql_code):
 
         cursor = self.connection.cursor()
         cursor.execute(sql_code)
-        cursor.close()
 
+        cursor.close()
 
     def build_db(self):
         '''
@@ -49,4 +44,24 @@ class DB_Manager():
         '''
 
         if not self.check_if_db_exists():
-            pass
+            sql_code = f'CREATE DATABASE {cf.DATABASENAME}'
+            self.sql_command(sql_code)
+            sql_code = f'Use {cf.DATABASENAME}'
+            self.sql_command(sql_code)
+
+            sql_code = """  CREATE TABLE IF NOT EXISTS Movies (movie_id int AUTO_INCREMENT
+                                            ,name varchar(100) NOT NULL
+                                            ,summary text NOT NULL
+                                            ,synopsis text NOT NULL 
+                                        ,PRIMARY KEY (movie_id))    
+                                        """
+            self.sql_command(sql_code)
+
+    def insert(self,movie_name,summary,synopsis):
+        sql_code = f'Use {cf.DATABASENAME}'
+        self.sql_command(sql_code)
+        sql_code = f"""INSERT IGNORE INTO Movies (name, summary,synopsis) VALUES ('{movie_name}', '{summary}','{synopsis}')"""
+        print(sql_code)
+
+        self.sql_command(sql_code)
+        self.connection.commit()

@@ -5,4 +5,4 @@ DB_PASS = "project"
 CHARSET = "utf8mb4"
 
 MAIN_URL = 'https://www.imdb.com/feature/genre/?ref_=nv_ch_gr'
-
+PAGES_PER_GENRE = 20

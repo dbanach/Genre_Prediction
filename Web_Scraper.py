@@ -3,6 +3,17 @@ from bs4 import BeautifulSoup
 import requests
 import config as cf
 from DB_Manager import DB_Manager
+import time
+
+def escape_characters(my_string):
+    '''
+    Function that receives a string and eliminates the characters ' and " and returns the remaining string.
+    '''
+
+
+    output = my_string.replace("'","")
+    output = output.replace('"','')
+    return output
 
 def get_genre_table():
     '''
@@ -48,18 +59,17 @@ def go_inside_synopsis(movie_soup):
 
     return summary,synopsis_content
 
-def go_inside_movie(my_url):
+def go_inside_movie(my_url,dbm):
     '''
     Function that receives an URL of the movie page, goes inside it and gets movie name and genres information and then goes
     to the summary/synopsis page of the movie in order to get summaries and synopsis information
-
+    Also receives and passes an object of DB_Manager class in order to interact with the DataBase
     '''
 
     movie_page = requests.get(my_url)
     movie_soup = BeautifulSoup(movie_page.content, 'html.parser')
 
     title = movie_soup.find_all(class_ = 'TitleBlock__Container-sc-1nlhx7j-0 hglRHk')[0].find_all('h1')[0].get_text()
-    print(title)
 
     genres_of_movie = movie_soup.find_all(class_='ipc-metadata-list ipc-metadata-list--dividers-all Storyline__StorylineMetaDataList-sc-1b58ttw-1 esngIX ipc-metadata-list--base') \
                 [0].find_all('a',class_='ipc-metadata-list-item__list-content-item ipc-metadata-list-item__list-content-item--link')
@@ -71,11 +81,18 @@ def go_inside_movie(my_url):
 
     summaries,synopsis = go_inside_synopsis(movie_soup)
 
-def go_inside_genre(my_url):
+    title = escape_characters(title)
+    summaries = escape_characters(summaries)
+    synopsis = escape_characters(synopsis)
+
+    dbm.insert(title,summaries,synopsis)
+
+def go_inside_genre(my_url,dbm,count):
     '''
     Function that receives and URL of the main page of movies of one specific genre
     and iterates through the movies there to get the information.
-
+    Receives and passes an object of DB_Manager class in order to interact with the DataBase
+    Also receives a counter that's a number that represents how many pages the scraper has moved in one genre.
     '''
     genre_page = requests.get(my_url)
     genre_soup = BeautifulSoup(genre_page.content, 'html.parser')
@@ -84,17 +101,24 @@ def go_inside_genre(my_url):
     for movie_header in movie_headers:
         my_url = movie_header.find_all('a', href=True)[0]
         my_url = 'http://www.imdb.com' + my_url['href']
-        go_inside_movie(my_url)
-        break
+        time.sleep(.05)
+        go_inside_movie(my_url,dbm)
+
+    print(count)
+    if count < cf.PAGES_PER_GENRE:
+        time.sleep(.1)
+        next_url = (genre_soup.find_all(class_ = 'lister-page-next next-page',href=True)[0])
+        next_url = 'http://www.imdb.com' + next_url['href']
+        go_inside_genre(next_url,dbm,count+1)
 
 
-    # print(genre_soup.find_all('h3',class_='lister-item-header'))
 
-def iterate_genre_table(genre_table):
+def iterate_genre_table(genre_table,dbm):
     '''
     Function that receives a beautiful soup tag object with a table with all of the genres and iterates through
     sub tables containing only partial genres of that table.
     For each genre calls the function 'go_inside_genre'.
+    Also receives and passes an object of DB_Manager class in order to interact with the DataBase
     '''
 
 
@@ -105,68 +129,12 @@ def iterate_genre_table(genre_table):
             my_url = genres.find_all('a', href=True)[0]
             my_url =  'http://www.imdb.com' + my_url['href']
 
-            go_inside_genre(my_url)
+            go_inside_genre(my_url,dbm,1)
             break
         break
 
-#
-#
-# # print(tabla_general.find_all(class_='table-cell')[0].prettify())
-# tabla_small = tabla_general.find_all(class_='table-cell')[0]
-#
-# generos = tabla_small.find_all(class_ = 'table-row')
-# # print(generos[0].prettify())
-#
-# aux = 0
-# for small_table in tabla_general.find_all(class_='table-cell'):
-#     if aux == 1:
-#         break
-#     for genero in small_table.find_all(class_ ='table-row'):
-#         if aux == 1:
-#             break
-#         genero.find_all(class_='table-cell primary')[0]
-#         my_url = genero.find_all('a', href=True)[0]
-#         my_url =  'http://www.imdb.com' + my_url['href']
-#         print(my_url)
-#         aux+=1
-#         genre_page = requests.get(my_url)
-#         genre_soup = BeautifulSoup(genre_page.content, 'html.parser')
-#         # print(genre_soup.prettify())
-#
-#         movies_in_page = genre_soup.find_all(class_ = 'lister-item mode-advanced')
-#         new_url = movies_in_page[0].find_all(class_='lister-item-content')[0].find_all('h3')[0].find_all('a',href=True)[0]
-#         new_url = 'http://www.imdb.com' + new_url['href']
-#         # print(new_url)
-#         movie_page = requests.get(new_url)
-#         movie_soup = BeautifulSoup(movie_page.content,'html.parser')
-#
-#         # print(movie_soup.prettify())
-#         content = movie_soup.find_all(class_ = 'ipc-html-content ipc-html-content--base')
-#         content = (content[0]).get_text()
-#         # print(content)
-#
-#         genres = movie_soup.find_all(class_='ipc-metadata-list ipc-metadata-list--dividers-all Storyline__StorylineMetaDataList-sc-1b58ttw-1 esngIX ipc-metadata-list--base')\
-#         [0].find_all('a',class_='ipc-metadata-list-item__list-content-item ipc-metadata-list-item__list-content-item--link')
-#
-#         # for genre in genres:
-#         #     print(genre.get_text())
-#
-#         synopsis_url = movie_soup.find_all(class_='ipc-inline-list ipc-inline-list--show-dividers ipc-inline-list--inline PlotSection__PlotLinks-sc-1hc6syk-0 kSzuBT base')\
-#         [0].find_all('li')[1].find_all('a', href=True)[0]
-#         synopsis_url = 'http://www.imdb.com' + synopsis_url['href']
-#         # print(synopsis_url)
-#
-#         synopsis_page = requests.get(synopsis_url)
-#         synopsis_soup = BeautifulSoup(synopsis_page.content, 'html.parser')
-#
-#         summaries = synopsis_soup.find_all(id='plot-summaries-content')
-#         summaries = summaries[0].find_all('p')
-#         # for summ in summaries:
-#         #     print(summ.get_text())
-#
-#         synopsis_content = synopsis_soup.find_all(id='plot-synopsis-content')[0].find_all('li')[0].get_text()
-#         # print(synopsis_content)
 
 if __name__ == '__main__':
-    # get_genre_table()
-    iterate_genre_table(get_genre_table())
+    dbm = DB_Manager()
+    dbm.build_db()
+    iterate_genre_table(get_genre_table(),dbm)
