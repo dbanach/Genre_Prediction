@@ -53,15 +53,15 @@ class DB_Manager():
                                             ,name varchar(100) NOT NULL
                                             ,summary text NOT NULL
                                             ,synopsis text NOT NULL 
+                                            ,genres varchar(100) NOT NULL
                                         ,PRIMARY KEY (movie_id))    
                                         """
             self.sql_command(sql_code)
 
-    def insert(self,movie_name,summary,synopsis):
+    def insert(self,movie_name,summary,synopsis,genres):
         sql_code = f'Use {cf.DATABASENAME}'
         self.sql_command(sql_code)
-        sql_code = f"""INSERT IGNORE INTO Movies (name, summary,synopsis) VALUES ('{movie_name}', '{summary}','{synopsis}')"""
-        print(sql_code)
+        sql_code = f"""INSERT IGNORE INTO Movies (name, summary,synopsis,genres) VALUES ('{movie_name}', '{summary}','{synopsis}','{genres}')"""
 
         self.sql_command(sql_code)
         self.connection.commit()
